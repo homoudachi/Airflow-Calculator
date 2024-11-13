@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Airflow Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        label, input {
+            display: block;
+            margin: 10px 0;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Live Airflow Calculator</h1>
+    <label for="airSpeed">Air Speed (m/s):</label>
+    <input type="number" id="airSpeed" placeholder="Enter air speed in m/s" step="any" oninput="calculateAirflow()">
+
+    <label for="ductDiameter">Duct Diameter (mm):</label>
+    <input type="number" id="ductDiameter" placeholder="Enter duct diameter in mm" step="any" oninput="calculateAirflow()">
+
+    <div class="result" id="result">Airflow: 0.00 L/s</div>
+
+    <script>
+        function calculateAirflow() {
+            const airSpeed = parseFloat(document.getElementById('airSpeed').value) || 0;
+            const ductDiameter = parseFloat(document.getElementById('ductDiameter').value) || 0;
+
+            if (airSpeed <= 0 || ductDiameter <= 0) {
+                document.getElementById('result').innerText = "Airflow: 0.00 L/s";
+                return;
+            }
+
+            // Convert duct diameter from mm to meters
+            const diameterMeters = ductDiameter / 1000;
+
+            // Calculate cross-sectional area of the duct (A = π * (d/2)^2)
+            const area = Math.PI * Math.pow(diameterMeters / 2, 2);
+
+            // Calculate airflow (Q = A * v) and convert to liters per second (1 cubic meter = 1000 liters)
+            const airflow = area * airSpeed * 1000;
+
+            document.getElementById('result').innerText = `Airflow: ${airflow.toFixed(2)} L/s`;
+        }
+    </script>
+
+</body>
+</html>
