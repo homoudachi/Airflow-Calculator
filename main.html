@@ -7,58 +7,212 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 400px;
+            max-width: 500px;
             margin: 0 auto;
             padding: 20px;
         }
-        label, input {
+        label, input, select {
             display: block;
             margin: 10px 0;
         }
-        input[type="number"] {
+        input[type="number"], select {
             width: 100%;
             padding: 8px;
             box-sizing: border-box;
         }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .input-group input {
+            flex: 1;
+            margin: 0;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
         .result {
             margin-top: 20px;
             font-weight: bold;
+            font-size: 1.2em;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .input-container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .duct-type-selector {
+            margin-bottom: 20px;
+        }
+        .duct-section {
+            display: none;
+        }
+        .duct-section.active {
+            display: block;
+        }
+        .rect-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
     </style>
 </head>
 <body>
-
     <h1>Live Airflow Calculator</h1>
-    <label for="airSpeed">Air Speed (m/s):</label>
-    <input type="number" id="airSpeed" placeholder="Enter air speed in m/s" step="any" oninput="calculateAirflow()">
+    
+    <div class="input-container">
+        <h3>Air Speed</h3>
+        <div class="input-group">
+            <input type="number" id="airSpeed" placeholder="Enter air speed in m/s" step="0.1" min="0" value="0" oninput="calculateAirflow()">
+            <div class="button-group">
+                <button onclick="adjustAirSpeed(0.1)">▲</button>
+                <button onclick="adjustAirSpeed(-0.1)">▼</button>
+            </div>
+        </div>
+    </div>
 
-    <label for="ductDiameter">Duct Diameter (mm):</label>
-    <input type="number" id="ductDiameter" placeholder="Enter duct diameter in mm" step="any" oninput="calculateAirflow()">
+    <div class="input-container">
+        <h3>Duct Type</h3>
+        <div class="duct-type-selector">
+            <label>
+                <input type="radio" name="ductType" value="circular" checked onchange="switchDuctType('circular')"> Circular Duct
+            </label>
+            <label>
+                <input type="radio" name="ductType" value="rectangular" onchange="switchDuctType('rectangular')"> Rectangular Duct
+            </label>
+        </div>
 
-    <div class="result" id="result">Airflow: 0.00 L/s</div>
+        <div id="circularDuct" class="duct-section active">
+            <h4>Circular Duct Diameter</h4>
+            <div class="input-group">
+                <input type="number" id="customDuctDiameter" placeholder="Enter custom diameter in mm" min="0" oninput="calculateAirflow()">
+                <div class="button-group">
+                    <button onclick="adjustDuctSize(50)">▲</button>
+                    <button onclick="adjustDuctSize(-50)">▼</button>
+                </div>
+            </div>
+            
+            <label for="ductDiameter">Or select preset size:</label>
+            <select id="ductDiameter" onchange="updateCustomDiameter()">
+                <option value="">Select preset size</option>
+                <option value="100">100 mm</option>
+                <option value="150">150 mm</option>
+                <option value="200">200 mm</option>
+                <option value="250">250 mm</option>
+                <option value="300">300 mm</option>
+                <option value="350">350 mm</option>
+            </select>
+        </div>
+
+        <div id="rectangularDuct" class="duct-section">
+            <h4>Rectangular Duct Dimensions</h4>
+            <div class="rect-inputs">
+                <div>
+                    <label for="ductWidth">Width (mm):</label>
+                    <div class="input-group">
+                        <input type="number" id="ductWidth" placeholder="Width" min="0" oninput="calculateAirflow()">
+                        <div class="button-group">
+                            <button onclick="adjustRectDuct('width', 50)">▲</button>
+                            <button onclick="adjustRectDuct('width', -50)">▼</button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="ductHeight">Height (mm):</label>
+                    <div class="input-group">
+                        <input type="number" id="ductHeight" placeholder="Height" min="0" oninput="calculateAirflow()">
+                        <div class="button-group">
+                            <button onclick="adjustRectDuct('height', 50)">▲</button>
+                            <button onclick="adjustRectDuct('height', -50)">▼</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="result" id="result">Airflow: 0.0 L/s</div>
 
     <script>
         function calculateAirflow() {
             const airSpeed = parseFloat(document.getElementById('airSpeed').value) || 0;
-            const ductDiameter = parseFloat(document.getElementById('ductDiameter').value) || 0;
-
-            if (airSpeed <= 0 || ductDiameter <= 0) {
-                document.getElementById('result').innerText = "Airflow: 0.00 L/s";
-                return;
+            let area = 0;
+            
+            const ductType = document.querySelector('input[name="ductType"]:checked').value;
+            
+            if (ductType === 'circular') {
+                const ductDiameter = parseFloat(document.getElementById('customDuctDiameter').value) || 0;
+                if (airSpeed <= 0 || ductDiameter <= 0) {
+                    document.getElementById('result').innerText = "Airflow: 0.0 L/s";
+                    return;
+                }
+                // Convert duct diameter from mm to meters and calculate circular area
+                const diameterMeters = ductDiameter / 1000;
+                area = Math.PI * Math.pow(diameterMeters / 2, 2);
+            } else {
+                const ductWidth = parseFloat(document.getElementById('ductWidth').value) || 0;
+                const ductHeight = parseFloat(document.getElementById('ductHeight').value) || 0;
+                if (airSpeed <= 0 || ductWidth <= 0 || ductHeight <= 0) {
+                    document.getElementById('result').innerText = "Airflow: 0.0 L/s";
+                    return;
+                }
+                // Convert dimensions from mm to meters and calculate rectangular area
+                area = (ductWidth / 1000) * (ductHeight / 1000);
             }
-
-            // Convert duct diameter from mm to meters
-            const diameterMeters = ductDiameter / 1000;
-
-            // Calculate cross-sectional area of the duct (A = π * (d/2)^2)
-            const area = Math.PI * Math.pow(diameterMeters / 2, 2);
-
-            // Calculate airflow (Q = A * v) and convert to liters per second (1 cubic meter = 1000 liters)
+            
+            // Calculate airflow (Q = A * v) and convert to liters per second
             const airflow = area * airSpeed * 1000;
+            document.getElementById('result').innerText = `Airflow: ${airflow.toFixed(1)} L/s`;
+        }
 
-            document.getElementById('result').innerText = `Airflow: ${airflow.toFixed(2)} L/s`;
+        function adjustAirSpeed(delta) {
+            const airSpeedInput = document.getElementById('airSpeed');
+            const currentValue = parseFloat(airSpeedInput.value) || 0;
+            airSpeedInput.value = Math.max(0, (currentValue + delta).toFixed(1));
+            calculateAirflow();
+        }
+
+        function adjustDuctSize(delta) {
+            const ductInput = document.getElementById('customDuctDiameter');
+            const currentValue = parseFloat(ductInput.value) || 0;
+            ductInput.value = Math.max(0, currentValue + delta);
+            document.getElementById('ductDiameter').value = ""; // Clear preset selection
+            calculateAirflow();
+        }
+
+        function adjustRectDuct(dimension, delta) {
+            const input = document.getElementById(`duct${dimension.charAt(0).toUpperCase() + dimension.slice(1)}`);
+            const currentValue = parseFloat(input.value) || 0;
+            input.value = Math.max(0, currentValue + delta);
+            calculateAirflow();
+        }
+
+        function updateCustomDiameter() {
+            const presetSelect = document.getElementById('ductDiameter');
+            const customInput = document.getElementById('customDuctDiameter');
+            if (presetSelect.value) {
+                customInput.value = presetSelect.value;
+                calculateAirflow();
+            }
+        }
+
+        function switchDuctType(type) {
+            document.getElementById('circularDuct').classList.toggle('active', type === 'circular');
+            document.getElementById('rectangularDuct').classList.toggle('active', type === 'rectangular');
+            calculateAirflow();
         }
     </script>
-
 </body>
 </html>
