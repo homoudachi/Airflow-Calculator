@@ -39,14 +39,6 @@
             padding: 5px 10px;
             cursor: pointer;
         }
-        .result {
-            margin-top: 20px;
-            font-weight: bold;
-            font-size: 1.2em;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-        }
         .input-container {
             margin: 20px 0;
             padding: 15px;
@@ -67,6 +59,10 @@
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
+        .input-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -75,10 +71,21 @@
     <div class="input-container">
         <h3>Air Speed (m/s)</h3>
         <div class="input-group">
-            <input type="number" id="airSpeed" placeholder="Enter air speed in m/s" step="0.1" min="0" value="0" oninput="calculateAirflow()">
+            <input type="number" id="airSpeed" placeholder="Enter air speed in m/s" step="0.01" min="0" value="0" oninput="calculateFromSpeed()">
             <div class="button-group">
                 <button onclick="adjustAirSpeed(0.1)">▲</button>
                 <button onclick="adjustAirSpeed(-0.1)">▼</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <h3>Airflow (L/s)</h3>
+        <div class="input-group">
+            <input type="number" id="airflow" placeholder="Enter airflow in L/s" step="1" min="0" value="0" oninput="calculateFromFlow()">
+            <div class="button-group">
+                <button onclick="adjustAirflow(1)">▲</button>
+                <button onclick="adjustAirflow(-1)">▼</button>
             </div>
         </div>
     </div>
@@ -95,9 +102,9 @@
         </div>
 
         <div id="circularDuct" class="duct-section active">
-            <h4>Circular Duct Diameter (mm)</h4>
+            <h4>Circular Duct Diameter</h4>
             <div class="input-group">
-                <input type="number" id="customDuctDiameter" placeholder="Enter custom diameter in mm" min="0" oninput="calculateAirflow()">
+                <input type="number" id="customDuctDiameter" placeholder="Enter custom diameter in mm" min="0" oninput="calculateFromSpeed()">
                 <div class="button-group">
                     <button onclick="adjustDuctSize(50)">▲</button>
                     <button onclick="adjustDuctSize(-50)">▼</button>
@@ -122,7 +129,7 @@
                 <div>
                     <label for="ductWidth">Width (mm):</label>
                     <div class="input-group">
-                        <input type="number" id="ductWidth" placeholder="Width" min="0" oninput="calculateAirflow()">
+                        <input type="number" id="ductWidth" placeholder="Width" min="0" oninput="calculateFromSpeed()">
                         <div class="button-group">
                             <button onclick="adjustRectDuct('width', 50)">▲</button>
                             <button onclick="adjustRectDuct('width', -50)">▼</button>
@@ -132,7 +139,7 @@
                 <div>
                     <label for="ductHeight">Height (mm):</label>
                     <div class="input-group">
-                        <input type="number" id="ductHeight" placeholder="Height" min="0" oninput="calculateAirflow()">
+                        <input type="number" id="ductHeight" placeholder="Height" min="0" oninput="calculateFromSpeed()">
                         <div class="button-group">
                             <button onclick="adjustRectDuct('height', 50)">▲</button>
                             <button onclick="adjustRectDuct('height', -50)">▼</button>
@@ -143,60 +150,98 @@
         </div>
     </div>
 
-    <div class="result" id="result">Airflow: 0.0 L/s</div>
-
-    <script>
-        function calculateAirflow() {
-            const airSpeed = parseFloat(document.getElementById('airSpeed').value) || 0;
-            let area = 0;
-            
+ <script>
+        function calculateArea() {
+            // Previous calculateArea function remains the same
             const ductType = document.querySelector('input[name="ductType"]:checked').value;
+            let area = 0;
             
             if (ductType === 'circular') {
                 const ductDiameter = parseFloat(document.getElementById('customDuctDiameter').value) || 0;
-                if (airSpeed <= 0 || ductDiameter <= 0) {
-                    document.getElementById('result').innerText = "Airflow: 0.0 L/s";
-                    return;
-                }
-                // Convert duct diameter from mm to meters and calculate circular area
+                if (ductDiameter <= 0) return 0;
                 const diameterMeters = ductDiameter / 1000;
                 area = Math.PI * Math.pow(diameterMeters / 2, 2);
             } else {
                 const ductWidth = parseFloat(document.getElementById('ductWidth').value) || 0;
                 const ductHeight = parseFloat(document.getElementById('ductHeight').value) || 0;
-                if (airSpeed <= 0 || ductWidth <= 0 || ductHeight <= 0) {
-                    document.getElementById('result').innerText = "Airflow: 0.0 L/s";
-                    return;
-                }
-                // Convert dimensions from mm to meters and calculate rectangular area
+                if (ductWidth <= 0 || ductHeight <= 0) return 0;
                 area = (ductWidth / 1000) * (ductHeight / 1000);
             }
+            return area;
+        }
+
+        function calculateFromSpeed() {
+            // Previous calculateFromSpeed function remains the same
+            const airSpeed = parseFloat(document.getElementById('airSpeed').value) || 0;
+            const area = calculateArea();
             
-            // Calculate airflow (Q = A * v) and convert to liters per second
+            if (airSpeed <= 0 || area <= 0) {
+                document.getElementById('airflow').value = "0";
+                return;
+            }
+            
             const airflow = area * airSpeed * 1000;
-            document.getElementById('result').innerText = `Airflow: ${airflow.toFixed(1)} L/s`;
+            document.getElementById('airflow').value = airflow.toFixed(1);
+        }
+
+        function calculateFromFlow() {
+            // Previous calculateFromFlow function remains the same
+            const airflow = parseFloat(document.getElementById('airflow').value) || 0;
+            const area = calculateArea();
+            
+            if (airflow <= 0 || area <= 0) {
+                document.getElementById('airSpeed').value = "0";
+                return;
+            }
+            
+            const airSpeed = (airflow / 1000) / area;
+            document.getElementById('airSpeed').value = airSpeed.toFixed(2);
         }
 
         function adjustAirSpeed(delta) {
             const airSpeedInput = document.getElementById('airSpeed');
-            const currentValue = parseFloat(airSpeedInput.value) || 0;
-            airSpeedInput.value = Math.max(0, (currentValue + delta).toFixed(1));
-            calculateAirflow();
+            let currentValue = parseFloat(airSpeedInput.value) || 0;
+            
+            // Round to 1 decimal place first
+            currentValue = Math.round(currentValue * 10) / 10;
+            
+            // Add delta and ensure positive
+            const newValue = Math.max(0, currentValue + delta);
+            
+            // Format to 2 decimal places for display
+            airSpeedInput.value = newValue.toFixed(2);
+            calculateFromSpeed();
         }
 
+        function adjustAirflow(delta) {
+            const airflowInput = document.getElementById('airflow');
+            let currentValue = parseFloat(airflowInput.value) || 0;
+            
+            // Round to whole number first
+            currentValue = Math.round(currentValue);
+            
+            // Add delta and ensure positive
+            const newValue = Math.max(0, currentValue + delta);
+            
+            // Format to 1 decimal place for display
+            airflowInput.value = newValue.toFixed(1);
+            calculateFromFlow();
+        }
+
+        // Rest of the functions remain the same
         function adjustDuctSize(delta) {
             const ductInput = document.getElementById('customDuctDiameter');
             const currentValue = parseFloat(ductInput.value) || 0;
             ductInput.value = Math.max(0, currentValue + delta);
-            document.getElementById('ductDiameter').value = ""; // Clear preset selection
-            calculateAirflow();
+            document.getElementById('ductDiameter').value = "";
+            calculateFromSpeed();
         }
 
         function adjustRectDuct(dimension, delta) {
             const input = document.getElementById(`duct${dimension.charAt(0).toUpperCase() + dimension.slice(1)}`);
             const currentValue = parseFloat(input.value) || 0;
             input.value = Math.max(0, currentValue + delta);
-            calculateAirflow();
+            calculateFromSpeed();
         }
 
         function updateCustomDiameter() {
@@ -204,14 +249,14 @@
             const customInput = document.getElementById('customDuctDiameter');
             if (presetSelect.value) {
                 customInput.value = presetSelect.value;
-                calculateAirflow();
+                calculateFromSpeed();
             }
         }
 
         function switchDuctType(type) {
             document.getElementById('circularDuct').classList.toggle('active', type === 'circular');
             document.getElementById('rectangularDuct').classList.toggle('active', type === 'rectangular');
-            calculateAirflow();
+            calculateFromSpeed();
         }
     </script>
 </body>
